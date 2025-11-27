@@ -1,5 +1,5 @@
-delta-spark==2.3.0
-pyspark==3.4.1
+delta-spark==4.0.0
+pyspark==4.0.1
 boto3
 minio
 pandas

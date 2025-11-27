@@ -7,10 +7,14 @@ S3_RAW = os.environ.get('S3_RAW', 's3a://raw/')
 S3_BRONZE = os.environ.get('S3_BRONZE', 's3a://lakehouse/bronze/')
 
 
-spark = SparkSession.builder \
-.appName('lakehouse_ingest') \
-.getOrCreate()
-
+spark = (
+    SparkSession.builder
+    .appName("lakehouse_ingestion")
+    .config("spark.jars.packages", "io.delta:delta-spark_2.13:3.2.0")
+    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+    .getOrCreate()
+)
 
 # Utility to ingest one JSON file into a delta path
 def ingest_json(filename, table_name, multiline=False):
@@ -23,7 +27,7 @@ def ingest_json(filename, table_name, multiline=False):
     :return: None
     
     '''
-    path = f"{S3_RAW}/{filename}"
+    path = f"{S3_RAW}{filename}"
     print(f'Reading {path}')
     reader = spark.read
     if multiline:
