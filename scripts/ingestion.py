@@ -1,18 +1,17 @@
 '''Ingest JSON files from S3 raw bucket into Delta Lake bronze layer'''
-import os
+import os, sys
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
 
-S3_RAW = os.environ.get('S3_RAW', 's3a://raw/')
-S3_BRONZE = os.environ.get('S3_BRONZE', 's3a://lakehouse/bronze/')
+S3_RAW = os.environ.get('S3_RAW', 's3a://raw')
+S3_BRONZE = os.environ.get('S3_BRONZE', 's3a://lakehouse/bronze')
 
-
+sys.stdout.reconfigure(line_buffering=True)
+print(">>> ingestion.py started!", flush=True)
 spark = (
     SparkSession.builder
     .appName("lakehouse_ingestion")
-    .config("spark.jars.packages", "io.delta:delta-spark_2.13:3.2.0")
-    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
     .getOrCreate()
 )
 
@@ -27,14 +26,14 @@ def ingest_json(filename, table_name, multiline=False):
     :return: None
     
     '''
-    path = f"{S3_RAW}{filename}"
+    path = f"{S3_RAW}/{filename}"
     print(f'Reading {path}')
     reader = spark.read
     if multiline:
-        reader = reader.option('multiline','true')
+        reader = reader.option('multiline',True)
     df = reader.json(path)
     # add provenance
-    df = df.withColumn('_source_file', spark.sparkContext.broadcast(path).value)
+    df = df.withColumn('_source_file', F.lit(path))
     out = f"{S3_BRONZE}/{table_name}"
     print(f'Writing to {out} (overwrite)')
     df.write.format('delta').mode('overwrite').option('overwriteSchema','true').save(out)
